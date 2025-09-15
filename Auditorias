@@ -1,0 +1,78 @@
+import win32com.client
+import re
+import os
+import pandas as pd
+from datetime import datetime
+
+# === DEFINA O INTERVALO DE DATAS AQUI === 14 de Abril de 2025 aumentou os Volumes de Auditorias
+# Formato: 'dd/mm/aaaa'
+data_inicio = datetime.strptime("12/09/2025", "%d/%m/%Y").date()
+data_fim = datetime.strptime("12/09/2025", "%d/%m/%Y").date()
+
+# Formatar nome do arquivo com intervalo de datas
+nome_arquivo = f"Auditoria_{data_inicio.strftime('%d-%m')}_a_{data_fim.strftime('%d-%m')}.xlsx"
+caminho_saida = os.path.join(
+    r"F:\BACKOFFICE - CONTACT CENTER\Relatorio auditoria\2025\Abril", nome_arquivo
+)
+
+# Acessar o Outlook
+outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+caixa_entrada = outlook.GetDefaultFolder(6)
+emails = caixa_entrada.Items
+emails.Sort("[ReceivedTime]", True)
+
+# Filtrar e-mails no intervalo de datas
+emails_filtrados = []
+for email in emails:
+    try:
+        data_email = email.ReceivedTime.date()
+        if data_inicio <= data_email <= data_fim:
+            emails_filtrados.append(email)
+    except Exception:
+        continue
+
+print(f"\n📬 E-mails encontrados entre {data_inicio.strftime('%d/%m/%Y')} e {data_fim.strftime('%d/%m/%Y')}: {len(emails_filtrados)}")
+
+# Extrair dados dos e-mails
+dados = []
+
+for email in emails_filtrados:
+    try:
+        if "finalização auditoria" in email.Subject.lower():
+            print(f"🔍 Processando: {email.Subject}")
+            corpo = email.Body
+
+            protocolo = re.search(r"protocolo nº (\d+)", corpo, re.IGNORECASE)
+            id_re = re.search(r"Id RE: (\d+)", corpo)
+            dt_solicitacao = re.search(r"Dt\. Solicitação: (.+)", corpo)
+            solicitante = re.search(r"Solicitante: (.+)", corpo)
+            aprovador = re.search(r"Aprovador: (.+)", corpo)
+            motivo = re.search(r"Motivo: (.+)", corpo)
+            dt_finalizacao = re.search(r"Dt\. Finalização: (.+)", corpo)
+            status = re.search(r"Status Finalização: (.+)", corpo)
+            parecer_auditor = re.search(r"Parecer auditor:\s*(.*?)(?:\n\n|$)", corpo, re.DOTALL | re.IGNORECASE)
+
+            dados.append({
+                "ID": id_re.group(1).strip() if id_re else "",
+                "Protocolo Auditoria": protocolo.group(1).strip() if protocolo else "",
+                "Dt. Solicitação": dt_solicitacao.group(1).strip() if dt_solicitacao else "",
+                "Solicitante": solicitante.group(1).strip() if solicitante else "",
+                "Aprovador": aprovador.group(1).strip() if aprovador else "",
+                "Motivo": motivo.group(1).strip() if motivo else "",
+                "Dt. Finalização": dt_finalizacao.group(1).strip() if dt_finalizacao else "",
+                "Status Auditoria": status.group(1).strip() if status else "",
+                "Parecer Auditor": parecer_auditor.group(1).strip() if parecer_auditor else ""
+            })
+
+    except Exception as e:
+        print(f"❌ Erro ao processar e-mail: {e}")
+
+# Criar e salvar planilha
+if dados:
+    df = pd.DataFrame(dados)
+    df.to_excel(caminho_saida, index=False)
+    print(f"\n✅ Planilha criada com sucesso em: {caminho_saida}")
+else:
+    print("🚫 Nenhum dado de auditoria foi extraído dos e-mails no período definido.")
+
+
