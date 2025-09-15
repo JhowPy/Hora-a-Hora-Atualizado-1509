@@ -1,0 +1,107 @@
+import xlwings as xw
+
+# ✅ Caminho do arquivo
+caminho_dashboard = r"F:\BACKOFFICE - CONTACT CENTER\DashBoards BackOffice\2025\Julho\Semana 3 - (14.07 - 19.07)\Dashboard 11.09.xlsx"
+
+# 🎨 Cores dos turnos
+fundo_manha = (204, 229, 255)
+fonte_manha = (0, 51, 102)
+fundo_tarde = (255, 255, 204)
+fonte_tarde = (153, 102, 0)
+
+# 🎨 Cores por faixa de conversão (fundo + fonte)
+cor_vermelho_claro = (255, 204, 204)
+fonte_vermelho_escuro = (153, 0, 0)
+
+cor_amarelo_claro = (255, 255, 204)
+fonte_amarelo_escuro = (153, 153, 0)
+
+cor_verde_mais_claro = (204, 255, 204)
+fonte_verde_escuro = (0, 102, 0)
+
+cor_verde_claro = (153, 255, 153)
+# usa a mesma fonte verde escuro
+
+# 👥 Equipe manhã
+usuarios_manha = [
+
+"CAROLINE APARECIDA DA SILVA BARROZO",
+"DAYSE MIRANDA DOS SANTOS",
+"DIANNE ALVES SILVA GONCALVES",
+"ISABELLY FERREIRA COSTA",
+"JULIA GOMES SILVA",
+"MARIA DO ESPIRITO SANTO DA COSTA SILVA",
+"RAFAELLA DIAS OLIVEIRA",
+"SARA ARAUJO SOUZA"
+
+
+
+]
+
+# 👥 Equipe tarde
+usuarios_tarde = [
+
+"DAVI GUERRA VAINE SILVA",
+"JOAO VICTOR GONCALVES TAVARES DA SILVA",
+"LARYSSA MIGORANÇA KLEIN DA SILVA",
+"WESLLEY MORAES DE AMORIM",
+
+
+]
+
+# 📂 Abrir Excel
+wb = xw.Book(caminho_dashboard)
+ws = wb.sheets['Resumo 01.09–06.09']
+
+# 📌 Última linha
+ultima_linha = ws.range('C1').end('down').row
+
+# 🧑‍💼 Formatar por turno
+for linha in range(2, ultima_linha + 1):
+    usuario = ws.range(f"C{linha}").value
+    if isinstance(usuario, str):
+        usuario_upper = usuario.upper()
+        if usuario_upper in [u.upper() for u in usuarios_manha]:
+            for col in range(1, 20):
+                cell = ws.range((linha, col))
+                cell.color = fundo_manha
+                cell.font.color = fonte_manha
+        elif usuario_upper in [u.upper() for u in usuarios_tarde]:
+            for col in range(1, 20):
+                cell = ws.range((linha, col))
+                cell.color = fundo_tarde
+                cell.font.color = fonte_tarde
+
+# 🎯 Formatar coluna de Conversão (coluna 16)
+for linha in range(2, ultima_linha + 1):
+    celula = ws.range((linha, 16))
+    valor = celula.value
+
+    # Converter se vier em string com %
+    if isinstance(valor, (int, float)):
+        percentual = valor
+    elif isinstance(valor, str) and "%" in valor:
+        try:
+            percentual = float(valor.replace('%', '').replace(',', '.')) / 100
+        except:
+            continue
+    else:
+        continue
+
+    if percentual < 0.89:
+        celula.color = cor_vermelho_claro
+        celula.font.color = fonte_vermelho_escuro
+    elif 0.90 <= percentual < 0.95:
+        celula.color = cor_amarelo_claro
+        celula.font.color = fonte_amarelo_escuro
+    elif 0.95 <= percentual < 1.0:
+        celula.color = cor_verde_mais_claro
+        celula.font.color = fonte_verde_escuro
+    else:  # ≥ 100%
+        celula.color = cor_verde_claro
+        celula.font.color = fonte_verde_escuro
+
+# 💾 Salvar e fechar
+wb.save()
+wb.close()
+print('Formatação realizada')
